@@ -31,7 +31,7 @@ const SalesManagement = () => {
     }
   });
 
-  const { data: salesData } = useQuery({
+  const { data: salesData, isLoading: isSalesLoading } = useQuery({
     queryKey: ['merchant-sales'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -39,12 +39,66 @@ const SalesManagement = () => {
         throw new Error('Not authenticated');
       }
 
-      // This would be replaced with actual merchant sales data query
-      // For now returning mock data
+      // 获取商户资料
+      const { data: merchantProfile, error: merchantError } = await supabase
+        .from('merchant_profiles')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (merchantError) {
+        console.error('获取商户资料失败:', merchantError);
+        throw merchantError;
+      }
+
+      if (!merchantProfile) {
+        return {
+          pendingSales: 0,
+          completedSales: 0,
+          totalIncome: 0
+        };
+      }
+
+      // 获取待处理订单数量
+      const { count: pendingCount, error: pendingError } = await supabase
+        .from('orders')
+        .select('id', { count: 'exact' })
+        .eq('merchant_id', merchantProfile.id)
+        .eq('status', 'pending');
+
+      if (pendingError) {
+        console.error('获取待处理订单数量失败:', pendingError);
+      }
+
+      // 获取已完成订单数量
+      const { count: completedCount, error: completedError } = await supabase
+        .from('orders')
+        .select('id', { count: 'exact' })
+        .eq('merchant_id', merchantProfile.id)
+        .eq('status', 'completed');
+
+      if (completedError) {
+        console.error('获取已完成订单数量失败:', completedError);
+      }
+
+      // 获取总收入
+      const { data: incomeData, error: incomeError } = await supabase
+        .from('orders')
+        .select('amount')
+        .eq('merchant_id', merchantProfile.id)
+        .eq('status', 'completed');
+
+      if (incomeError) {
+        console.error('获取总收入失败:', incomeError);
+      }
+
+      // 计算总收入
+      const totalIncome = incomeData?.reduce((sum, order) => sum + (order.amount || 0), 0) || 0;
+
       return {
-        pendingSales: 0,
-        completedSales: 0,
-        totalIncome: 0
+        pendingSales: pendingCount || 0,
+        completedSales: completedCount || 0,
+        totalIncome: totalIncome
       };
     }
   });

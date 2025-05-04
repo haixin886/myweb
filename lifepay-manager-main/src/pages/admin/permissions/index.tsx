@@ -46,53 +46,112 @@ const PermissionsPage = () => {
   const fetchRolesAndPermissions = async () => {
     setIsLoading(true);
     try {
-      // 模拟权限数据
-      const mockPermissions: Permission[] = [
-        { id: "1", name: "查看用户", code: "user:view", description: "查看用户信息", module: "用户管理" },
-        { id: "2", name: "编辑用户", code: "user:edit", description: "编辑用户信息", module: "用户管理" },
-        { id: "3", name: "删除用户", code: "user:delete", description: "删除用户", module: "用户管理" },
-        { id: "4", name: "查看订单", code: "order:view", description: "查看订单信息", module: "订单管理" },
-        { id: "5", name: "处理订单", code: "order:process", description: "处理订单", module: "订单管理" },
-        { id: "6", name: "查看支付", code: "payment:view", description: "查看支付信息", module: "支付管理" },
-        { id: "7", name: "编辑支付", code: "payment:edit", description: "编辑支付信息", module: "支付管理" },
-        { id: "8", name: "系统设置", code: "system:settings", description: "管理系统设置", module: "系统管理" },
-        { id: "9", name: "查看日志", code: "system:logs", description: "查看系统日志", module: "系统管理" },
-      ];
+      // 从数据库获取权限数据
+      const { data: permissionsData, error: permissionsError } = await adminSupabase
+        .from('permissions')
+        .select('*');
       
-      // 模拟角色数据
-      const mockRoles: Role[] = [
-        { 
-          id: "1", 
-          name: "超级管理员", 
-          description: "拥有所有权限", 
-          permissions: mockPermissions.map(p => p.code),
-          created_at: new Date().toISOString()
-        },
-        { 
-          id: "2", 
-          name: "订单管理员", 
-          description: "管理订单相关功能", 
-          permissions: ["order:view", "order:process"],
-          created_at: new Date().toISOString()
-        },
-        { 
-          id: "3", 
-          name: "客服人员", 
-          description: "处理客户服务请求", 
-          permissions: ["user:view", "order:view"],
-          created_at: new Date().toISOString()
-        },
-      ];
-
-      setPermissions(mockPermissions);
+      if (permissionsError) {
+        console.error('获取权限数据失败:', permissionsError);
+        throw permissionsError;
+      }
       
-      // 过滤角色
-      let filteredRoles = mockRoles;
-      if (searchTerm) {
-        filteredRoles = mockRoles.filter(role => 
-          role.name.includes(searchTerm) || 
-          role.description.includes(searchTerm)
-        );
+      // 如果数据库中没有权限数据，则初始化一些基本权限
+      if (!permissionsData || permissionsData.length === 0) {
+        const defaultPermissions: Permission[] = [
+          { id: "1", name: "查看用户", code: "user:view", description: "查看用户信息", module: "用户管理" },
+          { id: "2", name: "编辑用户", code: "user:edit", description: "编辑用户信息", module: "用户管理" },
+          { id: "3", name: "删除用户", code: "user:delete", description: "删除用户", module: "用户管理" },
+          { id: "4", name: "查看订单", code: "order:view", description: "查看订单信息", module: "订单管理" },
+          { id: "5", name: "处理订单", code: "order:process", description: "处理订单", module: "订单管理" },
+          { id: "6", name: "查看支付", code: "payment:view", description: "查看支付信息", module: "支付管理" },
+          { id: "7", name: "编辑支付", code: "payment:edit", description: "编辑支付信息", module: "支付管理" },
+          { id: "8", name: "系统设置", code: "system:settings", description: "管理系统设置", module: "系统管理" },
+          { id: "9", name: "查看日志", code: "system:logs", description: "查看系统日志", module: "系统管理" },
+        ];
+        
+        // 将默认权限插入数据库
+        const { error: insertError } = await adminSupabase
+          .from('permissions')
+          .insert(defaultPermissions);
+          
+        if (insertError) {
+          console.error('初始化权限数据失败:', insertError);
+          throw insertError;
+        }
+        
+        setPermissions(defaultPermissions);
+      } else {
+        setPermissions(permissionsData);
+      }
+      
+      // 从数据库获取角色数据
+      const { data: rolesData, error: rolesError } = await adminSupabase
+        .from('roles')
+        .select('*');
+        
+      if (rolesError) {
+        console.error('获取角色数据失败:', rolesError);
+        throw rolesError;
+      }
+      
+      // 如果数据库中没有角色数据，则初始化一些基本角色
+      if (!rolesData || rolesData.length === 0) {
+        const defaultRoles: Role[] = [
+          { 
+            id: "1", 
+            name: "超级管理员", 
+            description: "拥有所有权限", 
+            permissions: permissionsData ? permissionsData.map(p => p.code) : ["user:view", "user:edit", "user:delete", "order:view", "order:process", "payment:view", "payment:edit", "system:settings", "system:logs"],
+            created_at: new Date().toISOString()
+          },
+          { 
+            id: "2", 
+            name: "订单管理员", 
+            description: "管理订单相关功能", 
+            permissions: ["order:view", "order:process"],
+            created_at: new Date().toISOString()
+          },
+          { 
+            id: "3", 
+            name: "客服人员", 
+            description: "处理客户服务请求", 
+            permissions: ["user:view", "order:view"],
+            created_at: new Date().toISOString()
+          },
+        ];
+        
+        // 将默认角色插入数据库
+        const { error: insertError } = await adminSupabase
+          .from('roles')
+          .insert(defaultRoles);
+          
+        if (insertError) {
+          console.error('初始化角色数据失败:', insertError);
+          throw insertError;
+        }
+        
+        // 过滤角色
+        let filteredRoles = defaultRoles;
+        if (searchTerm) {
+          filteredRoles = defaultRoles.filter(role => 
+            role.name.includes(searchTerm) || 
+            role.description.includes(searchTerm)
+          );
+        }
+        
+        setRoles(filteredRoles);
+      } else {
+        // 过滤角色
+        let filteredRoles = rolesData;
+        if (searchTerm) {
+          filteredRoles = rolesData.filter(role => 
+            role.name.includes(searchTerm) || 
+            role.description.includes(searchTerm)
+          );
+        }
+        
+        setRoles(filteredRoles);
       }
       
       setRoles(filteredRoles);

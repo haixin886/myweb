@@ -4,6 +4,7 @@ import { Menu } from "lucide-react";
 import { Sheet, SheetTrigger } from "@/components/ui/sheet";
 import { DashboardMenu } from "./DashboardMenu";
 import { useIsMobile } from "@/hooks/use-mobile";
+import SyncIndicator from "@/components/sync/SyncIndicator";
 
 export const Header = () => {
   const isMobile = useIsMobile();
@@ -19,6 +20,9 @@ export const Header = () => {
         <DashboardMenu />
       </Sheet>
       <h1 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold flex-1 text-center`}>首页</h1>
+      <div className="flex items-center">
+        <SyncIndicator />
+      </div>
     </div>
   );
 };

@@ -7,6 +7,9 @@ import { toast } from "sonner";
 import { adminSupabase } from "@/integrations/supabase/client";
 import { RefreshCw, Search } from "lucide-react";
 
+// 使用类型断言来解决类型检查问题
+const supabaseAny = adminSupabase as any;
+
 interface OperationLog {
   id: string;
   admin_id: string;
@@ -33,36 +36,83 @@ const OperationLogsPage = () => {
   const fetchLogs = async () => {
     setIsLoading(true);
     try {
-      // 使用模拟数据，实际应用中应该从数据库获取
-      const mockLogs: OperationLog[] = Array(20).fill(null).map((_, index) => ({
-        id: `log-${index + 1}`,
-        admin_id: `admin-${Math.floor(Math.random() * 5) + 1}`,
-        admin_name: `管理员${Math.floor(Math.random() * 5) + 1}`,
-        action: ['登录', '修改设置', '添加用户', '删除记录', '更新配置'][Math.floor(Math.random() * 5)],
-        target: ['系统', '用户', '配置', '支付地址', '订单'][Math.floor(Math.random() * 5)],
-        details: `操作详情 ${index + 1}`,
-        ip_address: `192.168.1.${Math.floor(Math.random() * 255) + 1}`,
-        created_at: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-      }));
-
-      // 模拟搜索和分页
-      let filteredLogs = mockLogs;
+      // 使用真实数据库获取操作日志
+      // 创建查询对象
+      let query = supabaseAny
+        .from('operation_logs')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false });
+      
+      // 如果有搜索关键词，添加搜索条件
       if (searchTerm) {
-        filteredLogs = mockLogs.filter(log => 
-          log.admin_name.includes(searchTerm) || 
-          log.action.includes(searchTerm) || 
-          log.target.includes(searchTerm) || 
-          log.details.includes(searchTerm)
+        query = query.or(
+          `admin_name.ilike.%${searchTerm}%,operation.ilike.%${searchTerm}%,target_type.ilike.%${searchTerm}%,details.ilike.%${searchTerm}%`
         );
       }
       
-      setTotalPages(Math.ceil(filteredLogs.length / pageSize));
+      // 添加分页
+      query = query.range((page - 1) * pageSize, page * pageSize - 1);
       
-      // 分页
-      const startIndex = (page - 1) * pageSize;
-      const paginatedLogs = filteredLogs.slice(startIndex, startIndex + pageSize);
+      // 执行查询
+      const { data, error, count } = await query;
       
-      setLogs(paginatedLogs);
+      if (error) {
+        console.error('获取操作日志失败:', error);
+        throw error;
+      }
+      
+      // 如果还没有数据，使用模拟数据
+      if (!data || data.length === 0) {
+        // 生成模拟数据用于测试
+        const mockLogs: OperationLog[] = Array(20).fill(null).map((_, index) => ({
+          id: `log-${index + 1}`,
+          admin_id: `admin-${Math.floor(Math.random() * 5) + 1}`,
+          admin_name: `管理员${Math.floor(Math.random() * 5) + 1}`,
+          action: ['登录', '修改设置', '添加用户', '删除记录', '更新配置'][Math.floor(Math.random() * 5)],
+          target: ['系统', '用户', '配置', '支付地址', '订单'][Math.floor(Math.random() * 5)],
+          details: `操作详情 ${index + 1}`,
+          ip_address: `192.168.1.${Math.floor(Math.random() * 255) + 1}`,
+          created_at: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+        }));
+        
+        // 模拟搜索和分页
+        let filteredLogs = mockLogs;
+        if (searchTerm) {
+          filteredLogs = mockLogs.filter(log => 
+            log.admin_name.includes(searchTerm) || 
+            log.action.includes(searchTerm) || 
+            log.target.includes(searchTerm) || 
+            log.details.includes(searchTerm)
+          );
+        }
+        
+        setTotalPages(Math.ceil(filteredLogs.length / pageSize));
+        
+        // 分页
+        const startIndex = (page - 1) * pageSize;
+        const paginatedLogs = filteredLogs.slice(startIndex, startIndex + pageSize);
+        
+        setLogs(paginatedLogs);
+        console.log('使用模拟数据，因为数据库中没有操作日志数据');
+      } else {
+        // 处理真实数据
+        const formattedLogs = data.map((log: any) => ({
+          id: log.id,
+          admin_id: log.admin_id,
+          admin_name: log.admin_name || '未知管理员',
+          action: log.operation,
+          target: log.target_type || '-',
+          details: log.details ? (typeof log.details === 'string' ? log.details : JSON.stringify(log.details)) : '-',
+          ip_address: log.ip_address || '-',
+          created_at: log.created_at,
+        }));
+        
+        setLogs(formattedLogs);
+        if (count !== null) {
+          setTotalPages(Math.ceil(count / pageSize));
+        }
+        console.log('使用真实数据库数据');
+      }
     } catch (error) {
       console.error('Error loading logs:', error);
       toast.error("加载操作日志失败");

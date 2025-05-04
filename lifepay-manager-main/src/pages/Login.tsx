@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { Bell } from "lucide-react";
+import { Bell, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -32,18 +32,21 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      if (!username || !password) {
-        toast.error("请输入账号和密码");
+      if (!email || !password) {
+        toast.error("请输入邮箱和密码");
+        setIsLoading(false);
+        return;
+      }
+      
+      // 验证邮箱格式
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        toast.error("请输入有效的邮箱地址");
         setIsLoading(false);
         return;
       }
 
-      const email = `${username}@placeholder.com`;
-
-      // 直接尝试登录，不再预先检查用户是否存在
-      // 原来的方法可能会导致账户锁定或其他问题
-
-      // Now try the actual login with the provided password
+      // 使用邮箱和密码登录
       const {
         data,
         error
@@ -56,9 +59,9 @@ const Login = () => {
         console.error('Login error:', error);
         
         if (error.message.includes("Invalid login credentials")) {
-          toast.error("密码错误，请重新输入");
+          toast.error("邮箱或密码错误，请重新输入");
         } else if (error.message.includes("Email not confirmed")) {
-          toast.error("账号未验证，请查收邮件");
+          toast.error("邮箱未验证，请查收邮件");
         } else {
           toast.error(error.message);
         }
@@ -111,7 +114,14 @@ const Login = () => {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4 mb-8">
-          <Input type="text" placeholder="请输入账号" value={username} onChange={e => setUsername(e.target.value)} required className="h-12 bg-white/90 backdrop-blur-sm text-black" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck="false" />
+          <Input
+            type="email"
+            placeholder="请输入邮箱"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-12 rounded-xl bg-white/90 backdrop-blur-sm text-black"
+            required
+          />
           <Input type="password" placeholder="请输入密码" value={password} onChange={e => setPassword(e.target.value)} required className="h-12 bg-white/90 backdrop-blur-sm text-black" />
           <div className="flex justify-end">
             <Button variant="link" className="text-white hover:text-white/80 p-0 h-auto" onClick={e => {
@@ -122,7 +132,14 @@ const Login = () => {
             </Button>
           </div>
           <Button type="submit" className="w-full h-12 bg-[#6c2bd9] hover:bg-[#5a23b6]" disabled={isLoading}>
-            {isLoading ? "登录中..." : "登录"}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                登录中...
+              </>
+            ) : (
+              "登录"
+            )}
           </Button>
         </form>
 

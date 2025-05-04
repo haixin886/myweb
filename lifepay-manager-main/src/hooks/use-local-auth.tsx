@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 interface User {
   id: string;
   email: string;
+  password?: string; // 添加密码字段，只在本地认证中使用
   user_metadata: {
     is_admin: boolean;
     role?: string;
@@ -16,6 +17,7 @@ interface User {
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
+  isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any } | null>;
   signOut: () => Promise<void>;
   signUp: (email: string, password: string, metadata?: { is_admin: boolean }) => Promise<{ user: User } | { error: any }>;
@@ -31,6 +33,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const DEFAULT_ADMIN: User = {
   id: '1',
   email: 'admin@example.com',
+  password: 'admin123', // 添加默认密码
   user_metadata: {
     is_admin: true,
     role: 'admin'
@@ -101,28 +104,85 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loadUser();
   }, []);
 
-  // 登录
+  // 本地登录 - 只允许默认管理员账号登录
   const signIn = async (email: string, password: string) => {
     try {
-      // 获取所有用户
+      console.log('尝试本地登录:', email);
+      
+      // 只允许默认管理员账号登录
+      if (email === 'admin@example.com' && password === 'admin123') {
+        console.log('默认管理员账号登录成功');
+        
+        // 创建一个新的管理员用户对象，确保有正确的密码和权限
+        const adminUser: User = {
+          id: '1',
+          email: 'admin@example.com',
+          password: 'admin123',
+          user_metadata: {
+            is_admin: true,
+            role: 'admin'
+          },
+          created_at: new Date().toISOString()
+        };
+        
+        // 设置当前用户
+        setUser(adminUser);
+        setIsLoading(false);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(adminUser));
+        
+        // 确保用户列表中有这个管理员
+        const users = getLocalUsers();
+        if (!users.some(u => u.email === 'admin@example.com')) {
+          const updatedUsers = [...users, adminUser];
+          localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(updatedUsers));
+        }
+        
+        console.log('管理员登录成功，用户信息:', adminUser);
+        return null; // 返回null表示成功
+      }
+      
+      // 其他所有账号密码组合都返回错误
+      console.error('邮箱或密码错误');
+      return { error: { message: '邮箱或密码错误' } };
+      
+      // 其他用户的处理
       const users = getLocalUsers();
+      console.log('本地用户列表:', users);
       
-      // 查找匹配的用户
-      const foundUser = users.find(u => 
-        u.email.toLowerCase() === email.toLowerCase() && 
-        (u.email === DEFAULT_ADMIN.email ? password === 'admin123' : true) // 默认管理员使用固定密码
-      );
-      
-      if (foundUser) {
-        setUser(foundUser);
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(foundUser));
-        return null;
+      // 检查用户是否存在
+      const foundUser = users.find((u) => u.email === email);
+
+      if (!foundUser) {
+        console.error('用户不存在');
+        return { error: { message: '邮箱或密码错误' } };
       }
 
-      // 如果没有匹配的用户，返回错误
-      return { error: { message: '邮箱或密码错误' } };
+      // 检查密码是否正确
+      if (foundUser.password !== password) {
+        console.error('密码错误:', foundUser.password, password);
+        return { error: { message: '邮箱或密码错误' } };
+      }
+      
+      // 如果是管理员账号，确保设置了管理员权限
+      if (foundUser.email === 'admin@example.com' && (!foundUser.user_metadata || !foundUser.user_metadata.is_admin)) {
+        console.log('默认管理员账号，设置管理员权限');
+        foundUser.user_metadata = { ...foundUser.user_metadata, is_admin: true, role: 'admin' };
+      }
+
+      // 设置当前用户
+      setUser(foundUser);
+      setIsLoading(false);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(foundUser));
+      
+      // 更新用户列表中的用户信息
+      const updatedUsers = users.map(u => u.id === foundUser.id ? foundUser : u);
+      localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(updatedUsers));
+      
+      console.log('本地登录成功，用户信息:', foundUser);
+
+      return null;
     } catch (error) {
-      console.error('Sign in error:', error);
+      console.error('登录错误:', error);
       return { error };
     }
   };
@@ -148,6 +208,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const newUser: User = {
         id: `local-${Date.now()}`,
         email,
+        password, // 添加密码字段
         user_metadata: metadata,
         created_at: new Date().toISOString(),
       };
@@ -156,6 +217,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       users.push(newUser);
       saveLocalUsers(users);
       
+      console.log('用户创建成功:', newUser);
       return { user: newUser };
     } catch (error) {
       console.error('Sign up error:', error);
@@ -224,6 +286,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const value = {
     user,
     isLoading,
+    isAuthenticated,
     signIn,
     signOut,
     signUp,

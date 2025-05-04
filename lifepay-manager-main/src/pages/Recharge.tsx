@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -8,6 +8,10 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { createRechargeOrder } from "@/services/rechargeService";
+import { inquirePhoneInfo, formatMobileNumber, PhoneInquiryResult } from "@/services/phoneInquiryService";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const amounts = [20, 50, 100, 200, 300, 500, 1000];
 
@@ -22,6 +26,11 @@ const Recharge = () => {
   const [isValid, setIsValid] = useState(false);
   const [userBalance, setUserBalance] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // 手机号码查询相关状态
+  const [phoneInfo, setPhoneInfo] = useState<PhoneInquiryResult | null>(null);
+  const [isQueryingPhone, setIsQueryingPhone] = useState(false);
+  const [phoneQueryError, setPhoneQueryError] = useState("");
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -52,6 +61,16 @@ const Recharge = () => {
 
   useEffect(() => {
     validateForm();
+    
+    // 当手机号码变化且有效时，查询手机号码信息
+    const formattedPhone = formatMobileNumber(phoneNumber);
+    if (formattedPhone && formattedPhone.length === 11) {
+      queryPhoneInfo(formattedPhone);
+    } else {
+      // 如果手机号码无效，清除之前的查询结果
+      setPhoneInfo(null);
+      setPhoneQueryError("");
+    }
   }, [phoneNumber, selectedAmount, customAmount]);
 
   const validateForm = () => {
@@ -71,6 +90,29 @@ const Recharge = () => {
     setSelectedAmount(null);
   };
 
+  // 查询手机号码信息
+  const queryPhoneInfo = async (mobile: string) => {
+    // 如果已经在查询中，则跳过
+    if (isQueryingPhone) return;
+    
+    setIsQueryingPhone(true);
+    setPhoneQueryError("");
+    
+    try {
+      const info = await inquirePhoneInfo(mobile);
+      if (info) {
+        setPhoneInfo(info);
+      } else {
+        setPhoneQueryError("无法获取手机号码信息");
+      }
+    } catch (error) {
+      console.error('查询手机号码信息出错:', error);
+      setPhoneQueryError("查询手机号码信息时出错");
+    } finally {
+      setIsQueryingPhone(false);
+    }
+  };
+  
   const getFinalAmount = (): number => {
     if (selectedAmount) return selectedAmount;
     if (customAmount) return Number(customAmount);
@@ -173,6 +215,52 @@ const Recharge = () => {
               onChange={(e) => setPhoneNumber(e.target.value)}
               className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
             />
+            
+            {/* 手机号码信息显示区域 */}
+            {isQueryingPhone && (
+              <div className="flex items-center mt-2 text-sm text-gray-500">
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                正在查询手机号码信息...
+              </div>
+            )}
+            
+            {phoneQueryError && (
+              <div className="mt-2 text-sm text-red-500">
+                {phoneQueryError}
+              </div>
+            )}
+            
+            {phoneInfo && (
+              <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center">
+                    <span className="text-sm font-medium">{phoneInfo.mobile}</span>
+                    <Badge variant="outline" className="ml-2 text-xs">{phoneInfo.sp}</Badge>
+                  </div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-4 w-4 text-gray-400" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>原运营商: {phoneInfo.pri_sp}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-gray-500">归属地: </span>
+                    <span>{phoneInfo.province} {phoneInfo.city}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">账户余额: </span>
+                    <span className="font-medium text-green-600">¥{phoneInfo.curFee}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 

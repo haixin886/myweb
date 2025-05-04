@@ -4,11 +4,11 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 // 确保在所有环境中API密钥正确加载
-const SUPABASE_URL = "https://atxcgfhhpgyomicyipyh.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0eGNnZmhocGd5b21pY3lpcHloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk3NDIzNzEsImV4cCI6MjA1NTMxODM3MX0.jZgAuHoKvzOwp8kIW1bQZFOumbNM96UT2O7CMa6k-xY";
+const SUPABASE_URL = "https://kvekonddtzqqkubqjelh.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2ZWtvbmRkdHpxcWt1YnFqZWxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYzMzMzMjEsImV4cCI6MjA2MTkwOTMyMX0.noHqgWE1f4RPAHYXic7vhCPJ3YQWQh-M89qWdiy5SMI";
 
 // 使用服务端令牌，绕过RLS限制
-const SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0eGNnZmhocGd5b21pY3lpcHloIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczOTc0MjM3MSwiZXhwIjoyMDU1MzE4MzcxfQ.l9fu7vrM0TXGm6SpJnyF7OHjMHt5l78n3ihxdtkdPN0";
+const SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2ZWtvbmRkdHpxcWt1YnFqZWxoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NjMzMzMyMSwiZXhwIjoyMDYxOTA5MzIxfQ.HZFurDjvCu0nhWC3dYNS11U6lowz5O2pcQJt5_Bf5pU";
 
 // 验证API密钥是否有效
 if (!SUPABASE_URL || !SERVICE_KEY) {

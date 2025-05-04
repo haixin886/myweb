@@ -17,56 +17,46 @@ export async function createRechargeOrder(params: {
 }) {
   try {
     // 提取参数
-    const { userId, phone, amount, type, address } = params;
+    const { userId, phone, amount, type, address, usdtAmount } = params;
     
     // 生成随机订单号
     const timestamp = Date.now();
     const randomNum = Math.floor(Math.random() * 1000);
     const orderNo = `ORD${timestamp}${randomNum}`;
     
-    // 创建一个模拟订单对象
-    // 这是一个临时解决方案，允许用户测试整个流程
-    // 在实际生产环境中，应该修复数据库连接和权限问题
-    const mockOrder = {
-      id: `mock-${timestamp}`,
-      order_no: orderNo,
-      user_id: userId,
-      phone: phone,
-      amount: amount,
-      type: type,
-      status: 'pending',
-      created_at: new Date().toISOString(),
-      usdt_amount: amount
-    };
-    
-    // 尝试在控制台记录订单信息，便于调试
-    console.log('成功创建模拟订单:', mockOrder);
-    
-    // 直接返回模拟订单，跳过数据库操作
-    // 这允许用户测试UI和流程，而不受数据库错误影响
-    return mockOrder;
-    
-    /* 下面是真实的数据库操作代码，当前被注释掉
-    // 准备订单数据
-    const orderData = {
-      order_no: orderNo,
-      user_id: userId,
-      phone: phone,
-      amount: amount,
-      type: type,
-      status: 'pending',
-      created_at: new Date().toISOString(),
-      usdt_amount: amount
-    };
-    
-    // 如果提供了地址，添加到订单数据中
-    if (address) {
-      orderData.payment_address = address;
+    // 获取用户信息
+    const { data: userData, error: userError } = await supabase
+      .from('user_profiles')
+      .select('full_name')
+      .eq('id', userId)
+      .single();
+      
+    if (userError) {
+      console.error('获取用户信息失败:', userError);
+      throw new Error(userError.message);
     }
+    
+    // 准备订单数据 - 根据数据库表结构调整字段
+    const orderData = {
+      user_id: userId,
+      order_number: orderNo,
+      recharge_amount: amount,
+      actual_amount: amount, // 实际充值金额，可能会有手续费等差异
+      payment_method: type,
+      payment_channel: type.includes('USDT') ? 'crypto' : 'fiat',
+      phone_number: phone || '',
+      target_account: address || '',
+      user_name: userData?.full_name || '',
+      status: 'pending',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    console.log('准备创建充值订单:', orderData);
     
     // 使用管理员客户端创建订单
     const { data, error } = await adminSupabase
-      .from('orders')
+      .from('recharge_orders')
       .insert(orderData)
       .select()
       .single();
@@ -76,10 +66,8 @@ export async function createRechargeOrder(params: {
       throw new Error(error.message);
     }
     
-    return data;
-    */
+    console.log('成功创建订单:', data);
     
-    /* 以下代码在实际生产环境中使用，当前被注释掉
     // 对于非USDT充值类型的订单，直接更新用户余额
     // 对于USDT充值，我们不立即更新余额，而是等待实际转账确认后再更新
     if (type !== 'USDT充值' && type.includes('充值')) {
@@ -106,10 +94,9 @@ export async function createRechargeOrder(params: {
         }
       }
     }
-    */
     
     toast.success('订单已创建');
-    return mockOrder;
+    return data;
   } catch (error) {
     console.error('Create recharge order error:', error);
     toast.error('创建订单失败');

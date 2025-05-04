@@ -111,6 +111,11 @@ export const menuItems: MenuItemWithSubMenu[] = [
         description: "业绩分析和实时监控"
       },
       {
+        title: "数据同步",
+        href: "/admin/data-sync",
+        description: "管理前端和后端数据同步"
+      },
+      {
         title: "报表中心",
         href: "/admin/reports",
         description: "业务报表和对账单"

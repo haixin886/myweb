@@ -6,6 +6,7 @@ import { Toaster } from "./components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
 import { AuthProvider } from "./hooks/use-auth"; // 导入认证提供者
 import { AuthProvider as LocalAuthProvider } from "./hooks/use-local-auth"; // 导入本地认证提供者
+import { SyncProvider } from "./providers/SyncProvider"; // 导入数据同步提供者
 
 // 导入基本页面组件
 import Index from "./pages/Index";
@@ -55,8 +56,10 @@ function App() {
       <AuthProvider>
         {/* 添加本地认证提供者作为备份 */}
         <LocalAuthProvider>
-          <SonnerToaster position="top-center" />
-          <Toaster />
+          {/* 添加数据同步提供者 */}
+          <SyncProvider>
+            <SonnerToaster position="top-center" />
+            <Toaster />
           <Routes>
             {/* 前台用户端路由 */}
             <Route path="/" element={<Index />} />
@@ -85,13 +88,13 @@ function App() {
             <Route path="/wallet/recharge" element={<WalletRecharge />} />
             <Route path="/wallet/address" element={<WalletAddress />} />
 
-            {/* 管理后台路由 */}
+            {/* 管理后台路由 - 只保留一个路由入口 */}
             <Route path="/admin/*" element={<AdminRoutes />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
 
             {/* 404页面 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </SyncProvider>
         </LocalAuthProvider>
       </AuthProvider>
     </div>

@@ -1,8 +1,22 @@
 
 import { ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
-import { MenuItemWithSubMenu } from "@/pages/admin/menu/types";
+import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// 定义类型
+interface SubMenuItem {
+  title: string;
+  href?: string;
+}
+
+interface MenuItemWithSubMenu {
+  title: string;
+  icon: LucideIcon;
+  href?: string;
+  submenu?: boolean;
+  subMenuItems?: SubMenuItem[];
+}
 
 interface SidebarMenuItemProps {
   item: MenuItemWithSubMenu;
